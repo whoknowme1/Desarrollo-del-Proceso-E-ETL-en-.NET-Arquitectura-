@@ -1,0 +1,17 @@
+# Compilación
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Datos locales y salida del ETL (staging)
+output/
+data/
+**/Extracted/
+
+# Configuración local con rutas, servidores o credenciales: NO subir al repositorio
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+.env
