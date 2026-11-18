@@ -1,4 +1,4 @@
-# DataOpinionsExtractor
+# DataOpinions: proceso de extracción (E de ETL)
 
 Worker Service en .NET 8 que extrae opiniones de clientes desde archivos CSV, SQL Server y una API REST, y las guarda como archivos JSON (staging).
 
@@ -7,28 +7,27 @@ Worker Service en .NET 8 que extrae opiniones de clientes desde archivos CSV, SQ
 - .NET 8 SDK
 - SQL Server con la base `DataOpinions`
 - Carpeta con los archivos CSV de origen
-- Acceso a internet (API de prueba `jsonplaceholder.typicode.com`)
 
 ## Estructura del proyecto
 
 ```
 WorkerService/
-├── Domain/                  ExtractionResult
-├── Application/
-│   ├── Interfaces/          IExtractor
-│   ├── Options/             ExtractionOptions (configuración tipada)
-│   └── Services/            ExtractionService (orquesta la extracción)
-├── Infrastructure/
-│   └── Extractor/           CsvExtractor, DatabaseExtractor, ApiExtractor
-├── Worker.cs                Arranca la extracción y cierra el proceso
-├── Program.cs               Registro de servicios y configuración
-└── appsettings.json         Configuración base (sin datos sensibles)
+  Domain/            ExtractedDataset, ExtractionResult
+  Application/       IExtractor, IStagingWriter, ExtractionService, ExtractionOptions
+  Infrastructure/    CsvExtractor, DatabaseExtractor, ApiExtractor, JsonStagingWriter
+  Program.cs         Registro de dependencias y configuración
+DataOpinionsApi/     API mínima propia que sirve social_comments.csv
+
 ```
 
+## Configuración y seguridad
 
-## Configuración
+La configuración está centralizada en `appsettings.json` (sin secretos ni rutas locales). Los valores locales y las credenciales se agregan en capas que no se suben al repositorio:
 
-Crear `WorkerService/appsettings.Development.json` (no se estara en el repositorio):
+1. `appsettings.json` (en el repositorio, valores seguros por defecto)
+2. `appsettings.Development.json` (ignorado por git)
+3. User-secrets
+4. Variables de entorno
 
 ```json
 {
@@ -42,15 +41,18 @@ Crear `WorkerService/appsettings.Development.json` (no se estara en el repositor
 }
 ```
 
-## Ejecución
+## Cómo ejecutar
 
-```
-dotnet run --project WorkerService
-```
-
-Requiere .NET 8 SDK y SQL Server con la base `DataOpinions`.
-
-El proceso se cierra solo al terminar. Código de salida 0 si todas las fuentes salieron bien y 1 si alguna falló (las demás se completan igual).
+1. Configurar la llave de la API en `DataOpinionsApi/appsettings.Development.json`:
+   ```json
+   { "ApiSecurity": { "ApiKey": "<su-llave>" } }
+   ```
+2. Iniciar la API: `dotnet run --project DataOpinionsApi --launch-profile http` (escucha en `http://localhost:5080`).
+3. Configurar las rutas y la cadena de conexión del Worker, y la misma llave de la API:
+   ```
+   dotnet user-secrets set "Extraction:ApiKey" "<su-llave>" --project WorkerService
+   ```
+4. Ejecutar el Worker: `dotnet run --project WorkerService`.
 
 ## Salida (staging)
 
@@ -58,7 +60,7 @@ El proceso se cierra solo al terminar. Código de salida 0 si todas las fuentes 
 <OutputFolderPath>/
 ├── CSV/        un .json por cada .csv
 ├── Database/   un .json por tabla (esquema.tabla.json)
-├── API/        ApiComments.json
+├── API/        social-comments.json
 └── extraction_summary.json   registros, tiempos y estado de cada fuente
 ```
 
@@ -71,4 +73,5 @@ Los eventos y errores se registran con `ILogger` en la consola, con el prefijo d
 - `Worker` arranca la extracción y cierra el proceso.
 - `ExtractionService` ejecuta los extractores en paralelo y registra tiempos y errores.
 - `IExtractor` abstrae cada fuente (`CsvExtractor`, `DatabaseExtractor`, `ApiExtractor`). Para agregar una fuente, se crea una clase que lo implemente y se registra en `Program.cs`.
+- `IStagingWriter` (implementado por `JsonStagingWriter`) escribe cada conjunto de filas en JSON de forma atómica. Los extractores solo extraen, no saben dónde se guarda.
 - La configuración está en `appsettings.json`; las credenciales van fuera del repositorio.
