@@ -5,6 +5,7 @@ using DataOpinionsExtractor.Application.Services;
 using DataOpinionsExtractor.Infrastructure.Extractor;
 using Microsoft.Extensions.Options;
 using DataOpinionsExtractor.Infrastructure.Staging;
+using DataOpinionsExtractor.Infrastructure.Loading;
 
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -34,6 +35,8 @@ builder.Services.AddSingleton<IExtractor, ApiExtractor>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddSingleton<ExtractionService>();
 builder.Services.AddSingleton<IStagingWriter, JsonStagingWriter>();
+builder.Services.AddSingleton<IDimensionLoader, SqlDimensionLoader>();
+builder.Services.AddSingleton<DimensionLoadService>();
 
 var host = builder.Build();
 
